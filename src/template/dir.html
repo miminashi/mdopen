@@ -15,6 +15,20 @@
     font-size: 1.5em;
     margin-bottom: 16px;
 }
+.breadcrumb {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+.breadcrumb a {
+    text-decoration: none;
+    color: #0969da;
+}
+.breadcrumb a:hover {
+    text-decoration: underline;
+}
+.breadcrumb .separator {
+    color: #656d76;
+    margin: 0 2px;
+}
 .file-table th a {
     text-decoration: none;
     color: inherit;
@@ -70,6 +84,12 @@
     .dir-listing {
         color: #c9d1d9;
     }
+    .breadcrumb a {
+        color: #58a6ff;
+    }
+    .breadcrumb .separator {
+        color: #8b949e;
+    }
     .file-table th {
         background-color: #161b22;
     }
@@ -91,7 +111,8 @@
 
 {% block body %}
 <div class="dir-listing">
-    <h1>Directory <code>{{dir_path}}</code></h1>
+    <h1>Directory</h1>
+    <p><span class="breadcrumb"><a href="/">(Root Dir)</a>{% for crumb in breadcrumbs %}<span class="separator">/</span><a href="/{{crumb.path}}">{{crumb.name}}</a>{% endfor %}</span></p>
     <table class="file-table">
         <thead>
             <tr>
