@@ -9,6 +9,26 @@
     body {
         background-color: #0d1117;
     }
+    .raw-button {
+        background-color: #21262d;
+        border-color: #30363d;
+        color: #c9d1d9;
+    }
+    .raw-button:hover {
+        background-color: #30363d;
+        border-color: #8b949e;
+    }
+}
+@media (prefers-color-scheme: light) {
+    .raw-button {
+        background-color: #f6f8fa;
+        border-color: #d0d7de;
+        color: #24292f;
+    }
+    .raw-button:hover {
+        background-color: #f3f4f6;
+        border-color: #1f2328;
+    }
 }
 .markdown-body {
     box-sizing: border-box;
@@ -17,10 +37,32 @@
     margin: 0 auto;
     padding: 45px;
 }
+.page-header {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 16px 45px 0 45px;
+    display: flex;
+    justify-content: flex-end;
+}
+.raw-button {
+    display: inline-block;
+    padding: 5px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-decoration: none;
+    border: 1px solid;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+}
 </style>
 {% endblock %}
 
 {% block body %}
+<div class="page-header">
+    <a href="{{raw_url}}" class="raw-button">Raw</a>
+</div>
 <div class="markdown-body">
     {# <p><a href='#' onclick='history.back();'>Go back</a></p> #}
     {# <p><a href='/'>Home</a></p> #}
