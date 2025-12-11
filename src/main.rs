@@ -82,15 +82,28 @@ fn handle_asset(path: &str, jinja_env: &Environment) -> Response<Cursor<Vec<u8>>
 /// Sort order for directory listing
 #[derive(Clone, Copy, PartialEq)]
 enum SortOrder {
-    Name,
-    Time,
+    NameAsc,
+    NameDesc,
+    TimeAsc,
+    TimeDesc,
 }
 
 impl SortOrder {
     fn from_query(query: Option<&str>) -> Self {
         match query {
-            Some("time") => SortOrder::Time,
-            _ => SortOrder::Name,
+            Some("name_desc") => SortOrder::NameDesc,
+            Some("time") => SortOrder::TimeDesc,
+            Some("time_asc") => SortOrder::TimeAsc,
+            _ => SortOrder::NameAsc,
+        }
+    }
+
+    fn as_str(&self) -> &'static str {
+        match self {
+            SortOrder::NameAsc => "name",
+            SortOrder::NameDesc => "name_desc",
+            SortOrder::TimeAsc => "time_asc",
+            SortOrder::TimeDesc => "time",
         }
     }
 }
@@ -210,16 +223,30 @@ fn get_contents(
 
         // Sort files
         match sort_order {
-            SortOrder::Name => files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase())),
-            SortOrder::Time => files.sort_by(|a, b| b.modified_ts.cmp(&a.modified_ts)),
+            SortOrder::NameAsc => files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase())),
+            SortOrder::NameDesc => files.sort_by(|a, b| b.name.to_lowercase().cmp(&a.name.to_lowercase())),
+            SortOrder::TimeAsc => files.sort_by(|a, b| a.modified_ts.cmp(&b.modified_ts)),
+            SortOrder::TimeDesc => files.sort_by(|a, b| b.modified_ts.cmp(&a.modified_ts)),
         }
+
+        // Determine next sort for each column header
+        let name_next_sort = match sort_order {
+            SortOrder::NameAsc => "name_desc",
+            _ => "name",
+        };
+        let time_next_sort = match sort_order {
+            SortOrder::TimeDesc => "time_asc",
+            _ => "time",
+        };
 
         let tpl = jinja_env.get_template("dir.html").unwrap();
         let html = tpl
             .render(context! {
                 dir_path => path,
                 files => files,
-                current_sort => if sort_order == SortOrder::Name { "name" } else { "time" },
+                current_sort => sort_order.as_str(),
+                name_next_sort => name_next_sort,
+                time_next_sort => time_next_sort,
             })
             .unwrap();
 
