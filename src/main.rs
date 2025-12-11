@@ -151,6 +151,7 @@ fn get_contents(path: &Path, config: &AppConfig, jinja_env: &Environment) -> io:
                     style_url => format!("{}style.css", ASSETS_PREFIX),
                     title => file_path,
                     markdown_body => body,
+                    raw_url => format!("/{}/raw", path.display()),
                     enable_latex => config.enable_latex,
                     enable_reload => cfg!(feature = "reload") && config.enable_reload,
                 })
@@ -161,6 +162,37 @@ fn get_contents(path: &Path, config: &AppConfig, jinja_env: &Environment) -> io:
     };
     Ok(data)
 }
+/// Serve raw markdown file without rendering
+fn serve_raw_file(url: &str, jinja_env: &Environment) -> Response<Cursor<Vec<u8>>> {
+    let path = PathBuf::from(
+        percent_decode(url.as_bytes())
+            .decode_utf8_lossy()
+            .into_owned(),
+    );
+    let path_rel = path.strip_prefix("/").expect("url should have / prefix");
+
+    let cwd = match env::current_dir() {
+        Ok(cwd) => cwd,
+        Err(_) => return error_response(StatusCode(500), jinja_env),
+    };
+    let absolute_path = cwd.join(path_rel);
+
+    match fs::read(&absolute_path) {
+        Ok(data) => Response::from_data(data)
+            .with_status_code(200)
+            .with_header(
+                Header::from_bytes(&b"Content-Type"[..], &b"text/plain; charset=utf-8"[..]).unwrap(),
+            ),
+        Err(err) => {
+            if err.kind() == io::ErrorKind::NotFound {
+                error_response(StatusCode(404), jinja_env)
+            } else {
+                error_response(StatusCode(500), jinja_env)
+            }
+        }
+    }
+}
+
 fn serve_file(url: &str, config: &AppConfig, jinja_env: &Environment) -> Response<Cursor<Vec<u8>>> {
     let path = PathBuf::from(
         percent_decode(url.as_bytes())
@@ -229,6 +261,9 @@ fn handle(
 
     let response = if let Some(path) = url.strip_prefix(ASSETS_PREFIX) {
         handle_asset(path, jinja_env)
+    } else if let Some(path) = url.strip_suffix("/raw") {
+        log::info!("raw endpoint requested: {}", path);
+        serve_raw_file(path, jinja_env)
     } else {
         serve_file(&url, config, jinja_env)
     };
