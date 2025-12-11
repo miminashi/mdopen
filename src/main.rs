@@ -195,6 +195,24 @@ fn get_contents(
             pub modified_ts: u64,
             pub is_dir: bool,
         }
+
+        // Build breadcrumb navigation
+        #[derive(serde::Serialize)]
+        struct BreadcrumbItem {
+            pub name: String,
+            pub path: String,
+        }
+        let mut breadcrumbs: Vec<BreadcrumbItem> = Vec::new();
+        let mut cumulative_path = PathBuf::new();
+        for component in path.components() {
+            let name = component.as_os_str().to_string_lossy().to_string();
+            cumulative_path.push(&name);
+            breadcrumbs.push(BreadcrumbItem {
+                name,
+                path: cumulative_path.to_string_lossy().to_string(),
+            });
+        }
+
         let mut files: Vec<DirItem> = entries
             .filter_map(|e| e.ok())
             .filter_map(|e| {
@@ -243,6 +261,7 @@ fn get_contents(
         let html = tpl
             .render(context! {
                 dir_path => path,
+                breadcrumbs => breadcrumbs,
                 files => files,
                 current_sort => sort_order.as_str(),
                 name_next_sort => name_next_sort,
