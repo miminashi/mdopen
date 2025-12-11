@@ -2,15 +2,117 @@
 {% set title = dir_path %}
 {% block title %}Directory {{ dir_path }}{% endblock %}
 
+{% block head %}
+{{ super() }}
+<style>
+.dir-listing {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 20px 45px;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+}
+.dir-listing h1 {
+    font-size: 1.5em;
+    margin-bottom: 16px;
+}
+.sort-controls {
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+.sort-controls a {
+    margin-right: 12px;
+    text-decoration: none;
+    color: #0969da;
+}
+.sort-controls a:hover {
+    text-decoration: underline;
+}
+.sort-controls a.active {
+    font-weight: bold;
+}
+.file-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.file-table th, .file-table td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid #d0d7de;
+}
+.file-table th {
+    font-weight: 600;
+    background-color: #f6f8fa;
+}
+.file-table td.name {
+    word-break: break-all;
+}
+.file-table td.modified {
+    white-space: nowrap;
+    color: #656d76;
+    font-size: 14px;
+}
+.file-table a {
+    text-decoration: none;
+    color: #0969da;
+}
+.file-table a:hover {
+    text-decoration: underline;
+}
+.dir-icon::before {
+    content: "📁 ";
+}
+.file-icon::before {
+    content: "📄 ";
+}
+@media (prefers-color-scheme: dark) {
+    .dir-listing {
+        color: #c9d1d9;
+    }
+    .file-table th {
+        background-color: #161b22;
+    }
+    .file-table th, .file-table td {
+        border-bottom-color: #30363d;
+    }
+    .file-table td.modified {
+        color: #8b949e;
+    }
+    .sort-controls a, .file-table a {
+        color: #58a6ff;
+    }
+}
+</style>
+{% endblock %}
+
 {% block body %}
-<h1>Directory <code>{{dir_path}}</code></h1>
-<ul>
-    {% for file in files %}
-    <li ><a href="/{{file.path}}">{{ file.name }}</a></li>
-    {% else %}
-    <p>empty...</p>
-    {% endfor %}
-</ul>
+<div class="dir-listing">
+    <h1>Directory <code>{{dir_path}}</code></h1>
+    <div class="sort-controls">
+        Sort by:
+        <a href="?sort=name" {% if current_sort == "name" %}class="active"{% endif %}>Name</a>
+        <a href="?sort=time" {% if current_sort == "time" %}class="active"{% endif %}>Modified</a>
+    </div>
+    <table class="file-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Modified</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr>
+                <td class="name"><span class="{% if file.is_dir %}dir-icon{% else %}file-icon{% endif %}"></span><a href="/{{file.path}}">{{ file.name }}</a></td>
+                <td class="modified">{{ file.modified }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="2">empty...</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}
 
 {% block extra %}
