@@ -6,6 +6,7 @@ use std::fs;
 use std::io::{self, Cursor};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 use tiny_http::{Header, Method, Request, Response, Server, StatusCode};
 
 mod app_config;
@@ -78,11 +79,85 @@ fn handle_asset(path: &str, jinja_env: &Environment) -> Response<Cursor<Vec<u8>>
         .with_status_code(200)
 }
 
+/// Sort order for directory listing
+#[derive(Clone, Copy, PartialEq)]
+enum SortOrder {
+    Name,
+    Time,
+}
+
+impl SortOrder {
+    fn from_query(query: Option<&str>) -> Self {
+        match query {
+            Some("time") => SortOrder::Time,
+            _ => SortOrder::Name,
+        }
+    }
+}
+
+/// Format SystemTime as human-readable string
+fn format_time(time: SystemTime) -> String {
+    let duration = time
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default();
+    let secs = duration.as_secs();
+
+    // Convert to datetime components (simplified UTC)
+    let days = secs / 86400;
+    let time_of_day = secs % 86400;
+    let hours = time_of_day / 3600;
+    let minutes = (time_of_day % 3600) / 60;
+
+    // Calculate year, month, day from days since epoch
+    let mut year = 1970i32;
+    let mut remaining_days = days as i32;
+
+    loop {
+        let days_in_year = if year % 4 == 0 && (year % 100 != 0 || year % 400 == 0) {
+            366
+        } else {
+            365
+        };
+        if remaining_days < days_in_year {
+            break;
+        }
+        remaining_days -= days_in_year;
+        year += 1;
+    }
+
+    let is_leap = year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
+    let days_in_months = if is_leap {
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    } else {
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    };
+
+    let mut month = 1;
+    for days_in_month in days_in_months.iter() {
+        if remaining_days < *days_in_month {
+            break;
+        }
+        remaining_days -= *days_in_month;
+        month += 1;
+    }
+    let day = remaining_days + 1;
+
+    format!(
+        "{:04}-{:02}-{:02} {:02}:{:02}",
+        year, month, day, hours, minutes
+    )
+}
+
 // Get file contents for server response
 // For directory, create listing in HTML
 // For markdown, create generate HTML
 // For other files, get its content
-fn get_contents(path: &Path, config: &AppConfig, jinja_env: &Environment) -> io::Result<Vec<u8>> {
+fn get_contents(
+    path: &Path,
+    config: &AppConfig,
+    jinja_env: &Environment,
+    sort_order: SortOrder,
+) -> io::Result<Vec<u8>> {
     let cwd = env::current_dir()?;
 
     let absolute_path = cwd.join(path);
@@ -103,11 +178,13 @@ fn get_contents(path: &Path, config: &AppConfig, jinja_env: &Environment) -> io:
         struct DirItem {
             pub name: String,
             pub path: String,
-            // metadata? dont care
+            pub modified: String,
+            pub modified_ts: u64,
+            pub is_dir: bool,
         }
-        let files: Vec<DirItem> = entries
+        let mut files: Vec<DirItem> = entries
             .filter_map(|e| e.ok())
-            .map(|e| {
+            .filter_map(|e| {
                 let file_name = e
                     .path()
                     .file_name()
@@ -115,17 +192,34 @@ fn get_contents(path: &Path, config: &AppConfig, jinja_env: &Environment) -> io:
                     .to_string_lossy()
                     .into_owned();
                 let file_path = path.join(&file_name).to_string_lossy().to_string();
-                DirItem {
+                let metadata = e.metadata().ok()?;
+                let modified = metadata.modified().ok()?;
+                let modified_ts = modified
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_secs();
+                Some(DirItem {
                     name: file_name,
                     path: file_path,
-                }
+                    modified: format_time(modified),
+                    modified_ts,
+                    is_dir: metadata.is_dir(),
+                })
             })
             .collect();
+
+        // Sort files
+        match sort_order {
+            SortOrder::Name => files.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase())),
+            SortOrder::Time => files.sort_by(|a, b| b.modified_ts.cmp(&a.modified_ts)),
+        }
+
         let tpl = jinja_env.get_template("dir.html").unwrap();
         let html = tpl
             .render(context! {
                 dir_path => path,
                 files => files,
+                current_sort => if sort_order == SortOrder::Name { "name" } else { "time" },
             })
             .unwrap();
 
@@ -194,13 +288,32 @@ fn serve_raw_file(url: &str, jinja_env: &Environment) -> Response<Cursor<Vec<u8>
 }
 
 fn serve_file(url: &str, config: &AppConfig, jinja_env: &Environment) -> Response<Cursor<Vec<u8>>> {
+    // Split URL into path and query string
+    let (url_path, query_string) = match url.find('?') {
+        Some(pos) => (&url[..pos], Some(&url[pos + 1..])),
+        None => (url, None),
+    };
+
+    // Parse sort parameter from query string
+    let sort_param = query_string.and_then(|qs| {
+        qs.split('&')
+            .find_map(|param| {
+                let mut parts = param.splitn(2, '=');
+                match (parts.next(), parts.next()) {
+                    (Some("sort"), Some(value)) => Some(value),
+                    _ => None,
+                }
+            })
+    });
+    let sort_order = SortOrder::from_query(sort_param);
+
     let path = PathBuf::from(
-        percent_decode(url.as_bytes())
+        percent_decode(url_path.as_bytes())
             .decode_utf8_lossy()
             .into_owned(),
     );
     let path_rel = path.strip_prefix("/").expect("url should have / prefix");
-    let contents = get_contents(path_rel, config, jinja_env);
+    let contents = get_contents(path_rel, config, jinja_env, sort_order);
     match contents {
         Ok(contents) => {
             let mut response = Response::from_data(contents).with_status_code(200);
