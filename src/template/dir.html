@@ -15,20 +15,22 @@
     font-size: 1.5em;
     margin-bottom: 16px;
 }
-.sort-controls {
-    margin-bottom: 16px;
-    font-size: 14px;
-}
-.sort-controls a {
-    margin-right: 12px;
+.file-table th a {
     text-decoration: none;
+    color: inherit;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.file-table th a:hover {
     color: #0969da;
 }
-.sort-controls a:hover {
-    text-decoration: underline;
+.sort-arrow {
+    font-size: 10px;
+    opacity: 0.3;
 }
-.sort-controls a.active {
-    font-weight: bold;
+.sort-arrow.active {
+    opacity: 1;
 }
 .file-table {
     width: 100%;
@@ -77,7 +79,10 @@
     .file-table td.modified {
         color: #8b949e;
     }
-    .sort-controls a, .file-table a {
+    .file-table a {
+        color: #58a6ff;
+    }
+    .file-table th a:hover {
         color: #58a6ff;
     }
 }
@@ -87,16 +92,21 @@
 {% block body %}
 <div class="dir-listing">
     <h1>Directory <code>{{dir_path}}</code></h1>
-    <div class="sort-controls">
-        Sort by:
-        <a href="?sort=name" {% if current_sort == "name" %}class="active"{% endif %}>Name</a>
-        <a href="?sort=time" {% if current_sort == "time" %}class="active"{% endif %}>Modified</a>
-    </div>
     <table class="file-table">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Modified</th>
+                <th>
+                    <a href="?sort={{name_next_sort}}">
+                        Name
+                        <span class="sort-arrow {% if current_sort == 'name' %}active{% endif %}">{% if current_sort == 'name' %}▲{% elif current_sort == 'name_desc' %}▼{% else %}▲{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a href="?sort={{time_next_sort}}">
+                        Modified
+                        <span class="sort-arrow {% if current_sort == 'time' or current_sort == 'time_asc' %}active{% endif %}">{% if current_sort == 'time_asc' %}▲{% elif current_sort == 'time' %}▼{% else %}▼{% endif %}</span>
+                    </a>
+                </th>
             </tr>
         </thead>
         <tbody>
