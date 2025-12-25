@@ -196,6 +196,13 @@ fn get_contents(
             pub is_dir: bool,
         }
 
+        // Get root directory name
+        let root_name = cwd
+            .file_name()
+            .and_then(OsStr::to_str)
+            .unwrap_or("Root")
+            .to_string();
+
         // Build breadcrumb navigation
         #[derive(serde::Serialize)]
         struct BreadcrumbItem {
@@ -261,6 +268,7 @@ fn get_contents(
         let html = tpl
             .render(context! {
                 dir_path => path,
+                root_name => root_name,
                 breadcrumbs => breadcrumbs,
                 files => files,
                 current_sort => sort_order.as_str(),

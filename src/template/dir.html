@@ -112,7 +112,7 @@
 {% block body %}
 <div class="dir-listing">
     <h1>Directory</h1>
-    <p><span class="breadcrumb"><a href="/">(Root Dir)</a>{% for crumb in breadcrumbs %}<span class="separator">/</span><a href="/{{crumb.path}}">{{crumb.name}}</a>{% endfor %}</span></p>
+    <p><span class="breadcrumb"><a href="/">{{root_name}}</a>{% for crumb in breadcrumbs %}<span class="separator">/</span><a href="/{{crumb.path}}">{{crumb.name}}</a>{% endfor %}</span></p>
     <table class="file-table">
         <thead>
             <tr>
