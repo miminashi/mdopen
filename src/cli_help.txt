@@ -29,3 +29,7 @@ Options:
         Controls if mdopen will include syntax highlighting script for
         code blocks in HTML.
         Default: true
+    --mermaid
+    --no-mermaid
+        Controls if mdopen will render Mermaid diagrams in code blocks.
+        Default: true

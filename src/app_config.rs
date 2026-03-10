@@ -6,4 +6,5 @@ pub(crate) struct AppConfig {
     pub enable_reload: bool,
     pub enable_latex: bool,
     pub enable_syntax_highlight: bool,
+    pub enable_mermaid: bool,
 }

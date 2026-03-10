@@ -17,6 +17,7 @@ pub struct CommandArgs {
     pub enable_reload: bool,
     pub enable_latex: bool,
     pub enable_syntax_highlight: bool,
+    pub enable_mermaid: bool,
 }
 
 impl CommandArgs {
@@ -40,6 +41,7 @@ fn parse_args() -> Result<CommandArgs, lexopt::Error> {
         enable_latex: true,
         enable_reload: false,
         enable_syntax_highlight: true,
+        enable_mermaid: true,
     };
 
     let mut parser = lexopt::Parser::from_env();
@@ -84,6 +86,12 @@ fn parse_args() -> Result<CommandArgs, lexopt::Error> {
             }
             Long("no-syntax-hl") => {
                 args.enable_syntax_highlight = false;
+            }
+            Long("mermaid") => {
+                args.enable_mermaid = true;
+            }
+            Long("no-mermaid") => {
+                args.enable_mermaid = false;
             }
             Value(val) => {
                 if cfg!(not(feature = "syntax")) {

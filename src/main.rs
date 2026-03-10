@@ -301,6 +301,7 @@ fn get_contents(
                     markdown_body => body,
                     raw_url => format!("/{}/raw", path.display()),
                     enable_latex => config.enable_latex,
+                    enable_mermaid => config.enable_mermaid,
                     enable_reload => cfg!(feature = "reload") && config.enable_reload,
                 })
                 .unwrap();
@@ -456,6 +457,7 @@ fn main() {
         enable_reload: args.enable_reload,
         enable_latex: args.enable_latex,
         enable_syntax_highlight: args.enable_syntax_highlight,
+        enable_mermaid: args.enable_mermaid,
     };
 
     let server = match Server::http(config.addr) {

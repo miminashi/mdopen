@@ -1,8 +1,16 @@
 use pulldown_cmark::TextMergeStream;
-use pulldown_cmark::{html::push_html, Event, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{html::push_html, CodeBlockKind, Event, Options, Parser, Tag, TagEnd};
 use std::iter::Iterator;
 
 use crate::app_config::AppConfig;
+
+fn html_escape(s: &str) -> String {
+    s.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
+        .replace('\'', "&#39;")
+}
 
 fn to_tag_anchor(name: &str) -> String {
     name.to_lowercase()
@@ -26,6 +34,30 @@ pub fn to_html(md: &str, #[allow(unused)] config: &AppConfig) -> String {
 
     let parser = Parser::new_ext(md, options);
     let parser = TextMergeStream::new(parser);
+
+    // Mermaid code block processing: replace ```mermaid blocks with <pre class="mermaid">
+    let mut inside_mermaid = false;
+
+    let parser = parser.flat_map(move |event| match event {
+        Event::Start(Tag::CodeBlock(CodeBlockKind::Fenced(ref lang)))
+            if lang.as_ref() == "mermaid" && config.enable_mermaid =>
+        {
+            inside_mermaid = true;
+            vec![].into_iter()
+        }
+        Event::End(TagEnd::CodeBlock) if inside_mermaid => {
+            inside_mermaid = false;
+            vec![].into_iter()
+        }
+        Event::Text(ref text) if inside_mermaid => {
+            let escaped = html_escape(text.as_ref());
+            vec![Event::Html(
+                format!("<pre class=\"mermaid\">{}</pre>", escaped).into(),
+            )]
+            .into_iter()
+        }
+        other => vec![other].into_iter(),
+    });
 
     let mut inside_heading_level = false;
 
